@@ -1,50 +1,46 @@
 # Third-Party SaaS Access Review Lab
 
-![Microsoft 365](https://img.shields.io/badge/Microsoft_365-0078D4?style=for-the-badge&logo=microsoft365&logoColor=white)
-![Microsoft Entra ID](https://img.shields.io/badge/Microsoft_Entra_ID-5E5E5E?style=for-the-badge&logo=microsoft&logoColor=white)
-![SharePoint Online](https://img.shields.io/badge/SharePoint_Online-038387?style=for-the-badge&logo=microsoftsharepoint&logoColor=white)
-![Microsoft Graph](https://img.shields.io/badge/Microsoft_Graph-6264A7?style=for-the-badge&logo=microsoftgraph&logoColor=white)
-![PowerShell](https://img.shields.io/badge/PowerShell-5391FE?style=for-the-badge&logo=powershell&logoColor=white)
+![Microsoft 365](https://img.shields.io/badge/Microsoft_365-0078D4?style=flat-square&logo=microsoft365&logoColor=white)
+![Entra ID](https://img.shields.io/badge/Entra_ID-5E5E5E?style=flat-square&logo=microsoft&logoColor=white)
+![SharePoint](https://img.shields.io/badge/SharePoint-038387?style=flat-square&logo=microsoftsharepoint&logoColor=white)
+![Microsoft Graph](https://img.shields.io/badge/Microsoft_Graph-6264A7?style=flat-square&logo=microsoftgraph&logoColor=white)
+![PowerShell](https://img.shields.io/badge/PowerShell-5391FE?style=flat-square&logo=powershell&logoColor=white)
 
-> **The question:** What can a simulated vendor application actually read, does that match its purpose, and can a narrower grant be proven to work?
+**Third-party risk · Identity and access review · OAuth app permissions · Data classification · Audit evidence · Least privilege**
 
-I built a controlled Microsoft 365 lab to review a simulated vendor integration as an access boundary. The application used app-only authentication and Microsoft Graph `Sites.Selected`. I tested its real SharePoint reach against fictional files, reduced its access, and retested both the allowed and denied paths.
+I assessed a simulated vendor integration in a controlled Microsoft 365 tenant by testing what its application identity could actually read in SharePoint. The app reached a synthetic confidential-labeled file beyond its stated catalog purpose. I moved its site-level grant to the catalog site, then verified that the intended catalog read still worked and the original-site request was denied.
 
-**Lab result:** the app could read a synthetic confidential-labeled file before remediation. After I moved its site-level read grant to a fictional product-catalog site, catalog access succeeded and access to the original site returned **`403 Forbidden`**.
+> **The key finding:** permission review is not complete until the effective data reach is tested. In this lab, a `Sites.Selected` grant still exposed more data than the simulated integration needed.
 
----
+## Assessment snapshot
 
-## ✨ Project at a glance
-
-| | |
+| Scope | Evidence-based result |
 | --- | --- |
-| **Environment** | Personal Microsoft 365 trial tenant |
-| **Identity under review** | Entra app registration and its service principal |
-| **Authentication** | App-only OAuth flow; no user acting on behalf of the app |
-| **Access model** | Microsoft Graph `Sites.Selected` plus explicit site-level read grants |
-| **Test data** | Fictional public, internal, and confidential-labeled documents |
-| **Outcome** | Removed the unnecessary original-site grant; verified intended catalog access and a denied request to the original site |
-| **Audit result** | Entra service-principal sign-ins were visible; file-level audit evidence and retention could not be confirmed |
+| **Environment** | Personal Microsoft 365 trial tenant with fictional SharePoint content |
+| **Identity** | One simulated vendor app using app-only authentication through its service principal |
+| **Access model** | Microsoft Graph `Sites.Selected` with explicit site-level read grants |
+| **Data model** | Two SharePoint sites and three sensitivity tiers: public, internal, and confidential-labeled |
+| **Before remediation** | The app listed files and retrieved a synthetic confidential-labeled finance simulation from the original site |
+| **After remediation** | Catalog read succeeded; the original-site request returned `403 Forbidden` |
+| **Monitoring result** | Entra sign-ins were visible; file-level audit evidence and retention could not be confirmed |
 
-> **All documents in the lab were fictional.** The confidential-labeled finance summary used made-up values and contained no real financial, customer, or personal data.
+All lab documents used fictional content and made-up values.
 
-## 🧭 The assessment flow
+## What I delivered
 
-| Step | What I did | Why it matters |
-| --- | --- | --- |
-| **01 · Create** | Set up two SharePoint sites and synthetic files at different sensitivity tiers. | Gives the review a controlled data boundary. |
-| **02 · Grant** | Configured the simulated app with `Sites.Selected` and an explicit read grant. | The permission name alone does not show which site is reachable. |
-| **03 · Test** | Used Microsoft Graph to list and retrieve files as the app. | Measures effective access instead of inferring it from configuration. |
-| **04 · Observe** | Reviewed Entra service-principal sign-ins and attempted to confirm file-level audit evidence. | Separates authentication evidence from proof of a specific file read. |
-| **05 · Reduce** | Removed the original-site grant and granted read access to the catalog site. | Aligns access with the simulated app's stated purpose. |
-| **06 · Retest** | Confirmed catalog access still worked and the original-site request was denied. | Validates both expected access and the boundary after the change. |
+- **Mapped the access path:** Entra app registration → service principal → app-only token → Microsoft Graph → explicit SharePoint site grant.
+- **Tested effective reach:** used Microsoft Graph PowerShell to list and retrieve files as the application identity.
+- **Compared reach to purpose:** identified that a simulated catalog integration could also read a confidential-labeled finance simulation.
+- **Reduced access:** removed the original-site grant and granted read access to the catalog site.
+- **Verified both outcomes:** confirmed the catalog remained readable and the original site returned `403 Forbidden`.
+- **Separated authentication from audit evidence:** confirmed service-principal sign-ins but did not treat them as proof of a specific file read.
 
-## 🏗️ How the access boundary worked
+## Access boundary
 
 ```mermaid
 flowchart LR
     A[Simulated vendor app] -->|App-only token| B[Microsoft Graph]
-    B -->|Explicit site read grant| C[SharePoint site]
+    B -->|Explicit read grant| C[SharePoint site]
     C --> D[Synthetic documents]
 
     classDef app fill:#6C4AB6,color:#fff,stroke:#4B2E83,stroke-width:2px;
@@ -57,16 +53,16 @@ flowchart LR
     class D data;
 ```
 
-### Before and after the access change
+### Access before and after
 
 ```mermaid
 flowchart TB
-    subgraph Before[Before: broader than the lab purpose]
+    subgraph Before[Before: access exceeded the lab purpose]
         A[Simulated app] -->|Read| B[Original lab site]
         B --> C[Confidential-labeled synthetic file]
     end
-    subgraph After[After: limited to the catalog site]
-        D[Simulated app] -->|Read allowed| E[Catalog site]
+    subgraph After[After: access aligned to the catalog use case]
+        D[Simulated app] -->|Allowed| E[Catalog site]
         D -.->|403 Forbidden| F[Original lab site]
     end
 
@@ -80,15 +76,15 @@ flowchart TB
     class F blocked;
 ```
 
-## 🔎 What I tested
+## Assessment method
 
-### 1. The vendor identity
+### 1. Identify the vendor identity and grant
 
-I registered an Entra application and used its tenant service principal as the simulated vendor identity. In the app-only flow, the application requests access as itself rather than acting through a signed-in user's permissions.
+I registered an Entra application and reviewed the tenant's corresponding service principal. The app used app-only authentication, meaning the application requested access as itself rather than through a signed-in user's permissions. Its `Sites.Selected` application permission was paired with an explicit site-level read grant.
 
-### 2. The effective SharePoint reach
+### 2. Test the resource, not just the permission label
 
-I reviewed the app's `Sites.Selected` application permission and explicit site-level grants, then tested SharePoint through Microsoft Graph PowerShell. A sanitized example of the read-only file-list check:
+I used Microsoft Graph PowerShell to inspect the selected site's permissions, enumerate files, and retrieve a synthetic file. A sanitized example of the read-only listing check:
 
 ```powershell
 $siteId = "<LAB_SITE_ID>"
@@ -97,7 +93,7 @@ $files = Invoke-MgGraphRequest -Method GET -Uri $uri
 $files.value | Select-Object name, id
 ```
 
-The test followed these Microsoft Graph request patterns:
+The assessment used these Microsoft Graph request patterns:
 
 ```http
 GET /v1.0/sites/{site-id}/permissions
@@ -105,109 +101,115 @@ GET /v1.0/sites/{site-id}/drive/root/children
 GET /v1.0/sites/{site-id}/drive/items/{item-id}/content
 ```
 
-The first request inspects site permissions, the second lists files, and the third retrieves file content. IDs above are placeholders.
+The permission request inspects site grants, the children request lists files, and the content request retrieves a file. IDs shown here are placeholders.
 
-### 3. The data classification boundary
+### 3. Map data sensitivity to demonstrated reach
 
-| Synthetic file | Lab tier | Test purpose |
+| Fictional content | Tier | Role in the test |
 | --- | --- | --- |
-| `PUBLIC-Product-Catalog` | **Public** | The app's intended catalog use case |
-| `INTERNAL-Operations-Notes` | **Internal** | Illustrates a higher sensitivity tier |
-| `CONFIDENTIAL-Finance-Simulation` | **Confidential** | Tests whether app reach exceeds the fictional purpose |
+| Product catalog | **Public** | The simulated integration's intended use case |
+| Operations notes | **Internal** | A higher sensitivity tier in the lab inventory |
+| Finance simulation | **Confidential-labeled** | Tested whether the app's reach exceeded its purpose |
 
-The app's ability to retrieve the confidential-labeled simulation demonstrated why actual resource reach matters more than the permission label alone.
+The finding was based on the data the application could retrieve, not on the permission name alone.
 
-### 4. The monitoring evidence
+### 4. Review available monitoring evidence
 
-Entra contained successful service-principal sign-in events. A sign-in proves the application authenticated; it does not identify which SharePoint file it read. I could not confirm a matching file-level audit event or verify retention from the available evidence.
+Entra showed successful service-principal sign-ins. A sign-in confirms that the application authenticated; it does not identify which SharePoint file it read. I could not confirm a matching file-level audit event or establish its retention.
 
-The audit configuration query returned `UnifiedAuditLogIngestionEnabled: False`. Microsoft documents that this property can return `False` even when auditing is enabled, so I treated the value as **inconclusive**, not proof that audit ingestion was disabled. The detailed observation is in [findings.md](findings.md).
+The audit configuration query returned `UnifiedAuditLogIngestionEnabled: False`. Microsoft documents that this property can return `False` even when auditing is enabled, so I treated that value as inconclusive rather than proof that audit ingestion was disabled. The detailed assessment is in [findings.md](findings.md).
 
-### 5. The access reduction
+### 5. Reduce access and verify the boundary
 
-I removed the application's read grant to the original lab site and granted read access to the separate catalog site. Afterward:
+I removed the app's read grant to the original lab site and granted read access to the separate catalog site. I then repeated the Graph tests:
 
-- ✅ The simulated app could read the fictional catalog.
-- ⛔ The request to the original site returned **`403 Forbidden`**.
+| Retest | Result |
+| --- | --- |
+| Read the fictional product catalog | **Allowed** |
+| Read the original lab site | **Denied — `403 Forbidden`** |
 
-This verifies both the intended path and the denied path in the lab.
+## Findings
 
-## 📌 Findings summary
-
-| ID | Finding | Priority in this lab | Result |
-| --- | --- | --- | --- |
-| **VRA-01** | The original site-level read grant let the app retrieve confidential-labeled synthetic content beyond its fictional catalog purpose. | **High** | Original grant removed; catalog grant tested; original-site request denied. |
-| **OBS-01** | File-level audit coverage and retention could not be confirmed from available evidence. | **Evidence gap** | Recorded as unverified; the configuration query alone was inconclusive. |
-
-The priority reflects demonstrated resource reach and data sensitivity in this controlled exercise. It is not a production risk rating. See **[the detailed findings](findings.md)** for evidence, rationale, and recommendations.
-
-## 🖼️ Evidence gallery
-
-Screenshots are grouped by the part of the assessment they support. Select an image to view it at full size.
-
-<details open>
-<summary><strong>01 · Lab setup and synthetic data</strong></summary>
-
-<br>
-
-| Tenant baseline | SharePoint site | Private site starting state |
+| ID | Finding | Disposition |
 | --- | --- | --- |
-| <a href="screenshots/01-entra-baseline.png"><img src="screenshots/01-entra-baseline.png" width="240" alt="Entra tenant baseline"></a> | <a href="screenshots/01-sharepoint-lab-site-created.png"><img src="screenshots/01-sharepoint-lab-site-created.png" width="240" alt="SharePoint lab site created"></a> | <a href="screenshots/02-private-site-home-empty.png"><img src="screenshots/02-private-site-home-empty.png" width="240" alt="Private site home"></a> |
+| **VRA-01** | The original site grant let the app retrieve confidential-labeled synthetic content beyond its fictional catalog purpose. | Removed the original grant; moved access to the catalog site; verified the original path was denied. |
+| **OBS-01** | File-level audit coverage and retention could not be confirmed from the available evidence. | Recorded as unverified; the configuration query alone was inconclusive. |
 
-| Synthetic data inventory |
-| --- |
-| <a href="screenshots/03-synthetic-data-inventory.png"><img src="screenshots/03-synthetic-data-inventory.png" width="240" alt="Synthetic data inventory"></a> |
+Priority reflects demonstrated reach and sensitivity in this controlled exercise. It is not a production risk rating. See **[the detailed findings](findings.md)** for evidence, rationale, and recommendations.
+
+## Evidence gallery
+
+Each section expands to show full-size evidence. Select an image to open it at its original size.
+
+<details>
+<summary><strong>Lab setup and synthetic data</strong></summary>
+
+### Entra tenant baseline
+<a href="screenshots/01-entra-baseline.png"><img src="screenshots/01-entra-baseline.png" width="900" alt="Entra tenant baseline"></a>
+
+### SharePoint lab site created
+<a href="screenshots/01-sharepoint-lab-site-created.png"><img src="screenshots/01-sharepoint-lab-site-created.png" width="900" alt="SharePoint lab site created"></a>
+
+### Private site starting state
+<a href="screenshots/02-private-site-home-empty.png"><img src="screenshots/02-private-site-home-empty.png" width="900" alt="Private SharePoint site before test content was added"></a>
+
+### Synthetic data inventory
+<a href="screenshots/03-synthetic-data-inventory.png"><img src="screenshots/03-synthetic-data-inventory.png" width="900" alt="Inventory of fictional files at different sensitivity tiers"></a>
 
 </details>
 
-<details open>
-<summary><strong>02 · Grant and app-only access test</strong></summary>
+<details>
+<summary><strong>Grant and app-only access test</strong></summary>
 
-<br>
+### Site-scoped read grant
+<a href="screenshots/04-site-scoped-read-grant.png"><img src="screenshots/04-site-scoped-read-grant.png" width="900" alt="Explicit site-level read grant for the simulated application"></a>
 
-| Site-scoped read grant | App-only request context | Files visible to the app |
-| --- | --- | --- |
-| <a href="screenshots/04-site-scoped-read-grant.png"><img src="screenshots/04-site-scoped-read-grant.png" width="240" alt="Site-scoped read grant"></a> | <a href="screenshots/05-app-only-site-read-test.png"><img src="screenshots/05-app-only-site-read-test.png" width="240" alt="App-only request test"></a> | <a href="screenshots/06-vendor-app-visible-files.png"><img src="screenshots/06-vendor-app-visible-files.png" width="240" alt="Files visible to the simulated app"></a> |
+### App-only request context
+<a href="screenshots/05-app-only-site-read-test.png"><img src="screenshots/05-app-only-site-read-test.png" width="900" alt="App-only authentication context and Microsoft Graph site read test"></a>
 
-| Confidential-labeled synthetic file read |
-| --- |
-| <a href="screenshots/07-vendor-app-read-confidential-simulation.png"><img src="screenshots/07-vendor-app-read-confidential-simulation.png" width="240" alt="Confidential-labeled synthetic file read"></a> |
+### Files visible to the simulated app
+<a href="screenshots/06-vendor-app-visible-files.png"><img src="screenshots/06-vendor-app-visible-files.png" width="900" alt="Synthetic files listed by the simulated vendor app"></a>
 
-</details>
-
-<details open>
-<summary><strong>03 · Monitoring, remediation, and retest</strong></summary>
-
-<br>
-
-| Entra service-principal sign-in | Audit investigation | Catalog access after reduction |
-| --- | --- | --- |
-| <a href="screenshots/08-service-principal-sign-in-log.png"><img src="screenshots/08-service-principal-sign-in-log.png" width="240" alt="Service principal sign-in"></a> | <a href="screenshots/09-audit-ingestion-disabled.png"><img src="screenshots/09-audit-ingestion-disabled.png" width="240" alt="Audit investigation"></a> | <a href="screenshots/10-vendor-app-read-catalog-site.png"><img src="screenshots/10-vendor-app-read-catalog-site.png" width="240" alt="Catalog access after reduction"></a> |
-
-| Final boundary test |
-| --- |
-| <a href="screenshots/11-vendor-app-boundary-test.png"><img src="screenshots/11-vendor-app-boundary-test.png" width="240" alt="Final access boundary test"></a> |
+### Confidential-labeled synthetic file read
+<a href="screenshots/07-vendor-app-read-confidential-simulation.png"><img src="screenshots/07-vendor-app-read-confidential-simulation.png" width="900" alt="Simulated application retrieving the fictional finance file"></a>
 
 </details>
 
-## 🧪 Reproduce the exercise
+<details>
+<summary><strong>Monitoring, remediation, and retest</strong></summary>
+
+### Entra service-principal sign-in
+<a href="screenshots/08-service-principal-sign-in-log.png"><img src="screenshots/08-service-principal-sign-in-log.png" width="900" alt="Successful service-principal sign-in event"></a>
+
+### Audit investigation
+<a href="screenshots/09-audit-ingestion-disabled.png"><img src="screenshots/09-audit-ingestion-disabled.png" width="900" alt="Audit investigation output; configuration value treated as inconclusive"></a>
+
+### Catalog access after reduction
+<a href="screenshots/10-vendor-app-read-catalog-site.png"><img src="screenshots/10-vendor-app-read-catalog-site.png" width="900" alt="Simulated app reading the fictional catalog after the grant change"></a>
+
+### Final boundary test
+<a href="screenshots/11-vendor-app-boundary-test.png"><img src="screenshots/11-vendor-app-boundary-test.png" width="900" alt="Catalog request succeeds and original-site request is denied"></a>
+
+</details>
+
+## Reproduce the exercise
 
 1. Use a Microsoft 365 tenant you own or are authorized to assess.
 2. Create two SharePoint lab sites and add fictional documents only.
 3. Register a test app and configure the minimum permissions required for the exercise.
 4. Grant read access to one site and test file listing and retrieval in an app-only context.
-5. Record the data reached and what monitoring evidence you can verify.
+5. Record the data reached and the monitoring evidence you can verify.
 6. Remove the first grant, grant access to the intended catalog site, and retest both allowed and denied paths.
 
 Keep credentials outside source control and revoke lab credentials when they are no longer needed.
 
-## 📚 Quick glossary
+## Terminology
 
-| Term | Meaning here |
+| Term | Meaning in this assessment |
 | --- | --- |
 | **Microsoft Entra ID** | Microsoft's identity service, where the app was registered and sign-ins were reviewed. |
-| **App registration** | The application's definition, including configured API permissions. |
-| **Service principal** | The app's identity in this tenant. |
+| **App registration** | The application's definition, including its configured API permissions. |
+| **Service principal** | The application's identity in this tenant. |
 | **App-only access** | The application acts as itself, without a user acting on its behalf. |
 | **Microsoft Graph** | The API used to inspect site permissions and test file access. |
 | **SharePoint site** | A workspace that stores documents and collaboration content. |
@@ -215,14 +217,10 @@ Keep credentials outside source control and revoke lab credentials when they are
 | **`403 Forbidden`** | The response observed when the app requested the original site after its grant was removed. |
 | **Audit coverage** | Whether relevant activity can be found and its retention established. A sign-in alone does not prove a specific file read was logged. |
 
-## 🔗 References
+## References
 
 - [Selected permissions in OneDrive and SharePoint](https://learn.microsoft.com/en-us/graph/permissions-selected-overview)
 - [List site permissions with Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/site-list-permissions?view=graph-rest-1.0)
 - [Create a site permission with Microsoft Graph](https://learn.microsoft.com/en-us/graph/api/site-post-permissions?view=graph-rest-1.0)
 - [Search the audit log in Microsoft Purview](https://learn.microsoft.com/en-us/purview/audit-search)
 - [Microsoft 365 audit log activities for SharePoint](https://learn.microsoft.com/en-us/purview/audit-log-activities)
-
----
-
-<p align="center"><sub>Controlled lab · Fictional data · Least privilege · Evidence-based access review</sub></p>
