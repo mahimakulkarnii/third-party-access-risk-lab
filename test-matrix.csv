@@ -1,0 +1,8 @@
+Test ID,Phase,Test objective,Method,Observed result,Evidence
+T-01,Before remediation,Identify the explicit site-level grant,Review the site's Graph permission object,Simulated vendor application had a read grant to the original lab site,screenshots/04-site-scoped-read-grant.png
+T-02,Before remediation,Determine which files the app could enumerate,Request the granted site's drive root children through Microsoft Graph,The app listed synthetic files on the original lab site,screenshots/06-vendor-app-visible-files.png
+T-03,Before remediation,Verify reach to the higher-sensitivity simulation,Request the synthetic finance file content as the app,The app retrieved the confidential-labeled synthetic file,screenshots/07-vendor-app-read-confidential-simulation.png
+T-04,Monitoring review,Check whether the application authenticated,Review Entra service-principal sign-in events,Successful application sign-in events were visible; this does not prove a specific file read,screenshots/08-service-principal-sign-in-log.png
+T-05,Monitoring review,Look for file-level audit evidence and retention,Review the available audit investigation evidence,A matching file-read event and retention could not be confirmed; configuration value alone was inconclusive,screenshots/09-audit-ingestion-disabled.png
+T-06,After remediation,Confirm the intended catalog use case still works,List files on the catalog site after granting read access,The app listed the fictional catalog content,screenshots/10-vendor-app-read-catalog-site.png
+T-07,After remediation,Verify the original site boundary,Request the original site after removing its grant,The catalog request succeeded and the original-site request returned 403 Forbidden,screenshots/11-vendor-app-boundary-test.png

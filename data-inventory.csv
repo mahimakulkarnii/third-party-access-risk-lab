@@ -1,0 +1,4 @@
+Asset ID,Asset name,Data tier,Lab location,Within simulated vendor purpose,Observed reach before remediation,After remediation
+D-01,Fictional product catalog,Public,Catalog site,Yes,Separate site from original grant,Read succeeded on catalog site
+D-02,Fictional operations notes,Internal,Original lab site,No,Listed in original site's file enumeration,Original-site request denied after grant removal
+D-03,Fictional finance simulation,Confidential-labeled,Original lab site,No,File content retrieval succeeded before grant reduction,Original-site request denied after grant removal

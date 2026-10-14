@@ -103,6 +103,59 @@ GET /v1.0/sites/{site-id}/drive/items/{item-id}/content
 
 The permission request inspects site grants, the children request lists files, and the content request retrieves a file. IDs shown here are placeholders.
 
+### PowerShell test script
+
+The commands shown in the evidence were run interactively during the lab. I consolidated the work into two focused scripts:
+
+- [`scripts/Get-SitePermissionSummary.ps1`](scripts/Get-SitePermissionSummary.ps1) summarizes the explicit app principal and role returned by `Get-MgSitePermission`. Run it in an authorized operator/admin Graph session.
+- [`scripts/New-SiteSelectedReadGrant.ps1`](scripts/New-SiteSelectedReadGrant.ps1) recreates the explicit site-level `read` grant. It supports `-WhatIf` and requires an operator/admin context with authority to manage the site's permissions. The grant shown in the evidence was created during the original lab setup.
+- [`scripts/Test-VendorAppReach.ps1`](scripts/Test-VendorAppReach.ps1) repeats the app-only read tests. It prompts for the client secret as a secure string, confirms the context is app-only, and removes its temporary file after reading the synthetic finance simulation.
+
+The separate identities matter: the operator session inventories the grant; the app-only session tests what the simulated vendor can actually reach.
+
+Example grant inventory command, after connecting in the authorized operator session:
+
+```powershell
+& ./scripts/Get-SitePermissionSummary.ps1 -SiteId "<SITE_ID>"
+```
+
+The grant-creation script can preview the request without changing access:
+
+```powershell
+& ./scripts/New-SiteSelectedReadGrant.ps1 `
+  -SiteId "<SITE_ID>" `
+  -ApplicationId "<APP_CLIENT_ID>" `
+  -ApplicationDisplayName "Simulated Vendor Integration - Lab" `
+  -WhatIf
+```
+
+It is a setup aid for a lab site that does not yet have the grant; it is not needed for the already-configured project tenant.
+
+`Test-VendorAppReach.ps1` performs only read-only checks; it does not create, remove, or change permissions. The app and site grants must already be configured for the selected test stage.
+
+```powershell
+# Install the Microsoft Graph PowerShell SDK once, if needed
+Install-Module Microsoft.Graph -Scope CurrentUser
+
+# Before reducing the grant: list the original site's files and read the synthetic test file
+pwsh -File ./scripts/Test-VendorAppReach.ps1 `
+  -TenantId "<TENANT_ID>" `
+  -ClientId "<APP_CLIENT_ID>" `
+  -OriginalSiteId "<ORIGINAL_SITE_ID>" `
+  -CatalogSiteId "<CATALOG_SITE_ID>" `
+  -Stage Before
+
+# After moving the grant: verify catalog access and the original-site denial
+pwsh -File ./scripts/Test-VendorAppReach.ps1 `
+  -TenantId "<TENANT_ID>" `
+  -ClientId "<APP_CLIENT_ID>" `
+  -OriginalSiteId "<ORIGINAL_SITE_ID>" `
+  -CatalogSiteId "<CATALOG_SITE_ID>" `
+  -Stage After
+```
+
+The script is a cleaned-up, reusable version of the captured test flow; the screenshots document the original interactive runs. Replace the placeholders with IDs from an authorized lab tenant. The app needs the selected-site application permission and the corresponding explicit site grants for the selected stage.
+
 ### 3. Map data sensitivity to demonstrated reach
 
 | Fictional content | Tier | Role in the test |
@@ -136,6 +189,33 @@ I removed the app's read grant to the original lab site and granted read access 
 | **OBS-01** | File-level audit coverage and retention could not be confirmed from the available evidence. | Recorded as unverified; the configuration query alone was inconclusive. |
 
 Priority reflects demonstrated reach and sensitivity in this controlled exercise. It is not a production risk rating. See **[the detailed findings](findings.md)** for evidence, rationale, and recommendations.
+
+## How I prioritized the findings
+
+The review ranked issues using observed access and business purpose together, then recorded monitoring confidence separately. This keeps a confirmed data exposure distinct from an audit question the lab could not resolve.
+
+| Rank | Finding | Evidence considered | Decision |
+| --- | --- | --- | --- |
+| **1 · High within this lab** | The app read confidential-labeled content beyond its catalog purpose. | The content retrieval was demonstrated; the sensitivity tier and purpose mismatch were documented. | Remove the original-site grant, move access to the catalog site, and retest both paths. |
+| **Evidence gap** | File-level audit evidence and retention were not confirmed. | Entra sign-ins were visible, but the available audit investigation did not establish a corresponding file-read event. | Record coverage as unverified and avoid treating a sign-in as proof of file activity. |
+
+This is a qualitative, evidence-led ranking; it does not imply a numeric score or a production severity assessment.
+
+## Test coverage
+
+The test record connects each control question to the action performed, observed result, and screenshot evidence.
+
+| Test | Check | Observed result | Evidence |
+| --- | --- | --- | --- |
+| **T-01** | Inspect the explicit site grant | The app had a read grant to the original lab site. | [Grant](screenshots/04-site-scoped-read-grant.png) |
+| **T-02** | Enumerate the original site's files | The app listed synthetic files. | [File listing](screenshots/06-vendor-app-visible-files.png) |
+| **T-03** | Retrieve the confidential-labeled simulation | Content retrieval succeeded before the grant was reduced. | [Synthetic file read](screenshots/07-vendor-app-read-confidential-simulation.png) |
+| **T-04** | Check application sign-ins | Successful service-principal sign-ins were visible. | [Sign-in event](screenshots/08-service-principal-sign-in-log.png) |
+| **T-05** | Check file-level audit evidence | A matching event and retention could not be confirmed. | [Audit investigation](screenshots/09-audit-ingestion-disabled.png) |
+| **T-06** | Retest the intended catalog use case | Catalog listing succeeded after the grant change. | [Catalog read](screenshots/10-vendor-app-read-catalog-site.png) |
+| **T-07** | Retest the original-site boundary | Original-site request returned `403 Forbidden`. | [Boundary test](screenshots/11-vendor-app-boundary-test.png) |
+
+Download the full structured [test matrix](test-matrix.csv) or [data inventory](data-inventory.csv). Both contain synthetic lab information only.
 
 ## Evidence gallery
 
